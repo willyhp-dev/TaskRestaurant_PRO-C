@@ -1,0 +1,306 @@
+/* DECLARE SQL SECTION FOR DATABASE COLUMN */
+
+exec sql begin declare section;
+
+int id,hasil;
+
+char connData[50] = "C##WILLYHP/pontianak1@//localhost:1522/xe";
+
+
+struct{
+char foodNama[30];
+int foodPrice;
+int foodStock;
+}fdrinkStruct;
+
+exec sql end declare section;
+
+exec sql include sqlca;
+
+#include <iostream>
+#include <map>
+#include <vector>
+#include <cstdio>
+#include <functional>
+using namespace std;
+
+
+class Menu {
+    /* id variable */
+
+    string name;
+    int price;
+    int stock;
+
+    public:
+    Menu(string s, int d, int c) {
+        name = s;
+        price = d;
+        stock = c;
+          
+    };
+    string getName() {
+        return name;
+    }
+
+    int getPrice() {
+        return price;
+    }
+    int getStock(){
+       return stock;
+    }
+};
+
+class Order {
+    Menu* menu;
+    int quantity;
+
+    public:
+    Order(Menu* m, int q) {
+        menu = m;
+        quantity = q;
+    }
+
+    Menu* getMenu() {
+        return menu;
+    }
+
+    int getQuantity() {
+        return quantity;
+    }
+};
+
+void checkConn(){
+    if(sqlca.sqlcode ==0){
+       cout << "Connected successfully"<<endl;
+    }
+}
+
+int checkError(int num1, int num2) {
+    while (cin.fail() || num1 <= 0 || num1 > num2) {
+        cin.clear();
+        cin.ignore();
+
+        cout << "You entered an incorrect value. Try again" << endl;
+        cin >> num1;
+    }
+
+    return num1;
+}
+
+/* check for stock */
+/* checkError(int num1, int num2) */
+int checkError(int num1) {
+    /* num1 < num2 ? */
+    while (cin.fail() || num1 <= 0) {
+        cin.clear();
+        cin.ignore();
+
+        cout << "You entered an incorrect value. Try again" << endl;
+        cin >> num1;
+    }
+
+    return num1;
+}
+
+vector<Order*> orderingMenu(string menuType, map<int, Menu*> menuMap, string isOrdering, string stillOrdering) {
+    int code;
+    int n;
+    vector<Order*> orders;
+    
+
+    while (isOrdering != "N" || isOrdering != "n") {
+      exec sql connect: connData;
+        cout << "\nDo you want to order " << menuType << "?\n";
+        cin >> isOrdering;
+
+      
+        if (isOrdering == "N" || isOrdering == "n") {
+            return orders;
+        }
+
+        if (isOrdering == "Y" || isOrdering == "y") {
+
+            cout << "Please choose our " << menuType << " by selecting number below:\n";
+
+            for (int i = 0; i < menuMap.size(); i++) {
+                cout << i+1 << ". " << menuMap[i + 1]->getName() << "\t\t Rp. " << menuMap[i + 1]->getPrice() << "\t"<<menuMap[i+1]->getStock() << "\n";
+            }
+            while (stillOrdering != "N" || stillOrdering != "n") {
+                if (stillOrdering == "Y" || stillOrdering == "y") {
+                    cout << "\nYour " << menuType << " order number?\n";
+                    cin >> code;
+                    code = checkError(code, menuMap.size());
+
+                    cout << "How many quantity?\n";
+                    cin >> n;
+                    /* query stock from database */
+                    id = code;
+                    if(menuType == "food"){
+                    EXEC SQL DECLARE foodstock CURSOR FOR
+                        SELECT stock into :fdrinkStruct.foodStock from foodrinks
+                        where order_id = :id AND kategori = 'food';
+                    EXEC SQL OPEN foodstock;
+                    exec sql fetch foodstock into :fdrinkStruct.foodStock;
+                  
+ 
+                   if(n > fdrinkStruct.foodStock){
+                      cout << "maaf Stocknya tidak cukup"<<endl;
+                      return orders;
+                   }else{
+                   hasil = fdrinkStruct.foodStock - n;
+                 
+                   }
+                   EXEC SQL CLOSE foodstock;
+
+                    n = checkError(n);
+                    orders.push_back(new Order(menuMap[code], n));
+                    /* update stock to database */
+                       EXEC SQL DECLARE foodupdate CURSOR FOR 
+                            SELECT stock FROM FOODRINKS WHERE order_id = :id AND kategori = 'food' 
+                            FOR UPDATE OF stock;
+                       EXEC SQL OPEN foodupdate;
+                       EXEC SQL fetch foodupdate into :fdrinkStruct.foodStock;
+                       EXEC SQL update foodrinks set stock = :hasil WHERE CURRENT OF foodupdate;
+                       EXEC SQL commit;
+                       EXEC SQL CLOSE foodupdate;
+                    }
+
+                     else if(menuType == "drink"){
+                    EXEC SQL DECLARE drinkstock CURSOR FOR 
+                        SELECT stock FROM FOODRINK where order_id = :id AND kategori = 'drink';
+                    EXEC SQL OPEN drinkstock;
+                    EXEC SQL  FETCH drinkstock INTO :fdrinkStruct.foodStock;
+                   
+                   if(n > fdrinkStruct.foodStock){
+                      cout << "maaf Stocknya tidak cukup"<<endl;
+                      return orders;
+                   }else{
+                   hasil = fdrinkStruct.foodStock - n;
+                 
+                   }
+                    EXEC SQL CLOSE drinkstock;
+
+                    n = checkError(n);
+                    orders.push_back(new Order(menuMap[code], n));
+                    /* update stock to database */
+                      EXEC SQL DECLARE drinkupdate CURSOR FOR 
+                            SELECT stock FROM FOODRINKS WHERE order_id = :id AND kategori = 'drink' 
+                            FOR UPDATE OF stock;
+                       EXEC SQL OPEN drinkupdate;
+                       EXEC SQL fetch drinkupdate into :fdrinkStruct.foodStock;
+                       EXEC SQL update foodrinks set stock = :hasil WHERE CURRENT OF drinkupdate;
+                       EXEC SQL commit;
+                       EXEC SQL CLOSE drinkupdate;
+                      
+                    }
+   
+                } else if (stillOrdering != "N" || stillOrdering != "n") {
+                    cout << "Please Input the correct answer.\n";
+                }
+
+                cout << "Do you want to choose more " << menuType << "??\n";
+                cin >> stillOrdering;
+                if (stillOrdering == "N" || stillOrdering == "n") {
+                    isOrdering == "N";
+                    return orders;
+                }
+            }
+
+        } else {
+            cout << "Please input the correct answer\n";
+        }
+    }
+
+    return orders;
+}
+
+int main() {
+    exec sql connect: connData;
+    string isOrderingMenu = "y";
+    string isOrderingFood;
+    string isOrderingDrink;
+    string stillOrderingFood = "y";
+    string stillOrderingDrink = "y";
+    string kategori;
+
+    checkConn();
+    map<int, Menu*> foods;
+     map<int, Menu*> drinks;
+    /* data get from database */
+    /* for loop query from database */
+    
+     for(int i = 1;i<6;i++){
+           id = i;
+        //exec sql select nama,price,stock into  :foodNama, :foodPrice, :foodStock from foodrinks where order_id = :id AND kategori = 'food';
+        //exec sql commit;
+        EXEC SQL DECLARE foods CURSOR FOR
+                        SELECT stock,nama, price from foodrinks
+                        where order_id = :id AND kategori = 'food';
+                    EXEC SQL OPEN foods;
+                    exec sql fetch foods into :fdrinkStruct.foodStock, :fdrinkStruct.foodNama, :fdrinkStruct.foodPrice;
+                     foods.insert(make_pair(id,new Menu(fdrinkStruct.foodNama,fdrinkStruct.foodPrice,fdrinkStruct.foodStock)));
+        EXEC SQL CLOSE foods;
+            
+     }
+ 
+    /* data get from database */
+    /* for loop query.select and vector.insert from database */
+     for(int i = 1;i<6;i++){
+           id= i;
+        EXEC SQL DECLARE drinks CURSOR FOR
+                        SELECT stock,nama, price from foodrinks
+                        where order_id = :id AND kategori = 'drink';
+                    EXEC SQL OPEN drinks;
+                    exec sql fetch drinks into :fdrinkStruct.foodStock, :fdrinkStruct.foodNama, :fdrinkStruct.foodPrice;
+                     drinks.insert(make_pair(id,new Menu(fdrinkStruct.foodNama,fdrinkStruct.foodPrice,fdrinkStruct.foodStock)));
+        EXEC SQL CLOSE drinks;
+     }
+
+    vector<vector<Order*>> ordersList;
+
+    cout << "\n-----------------------------";
+    cout << "\nWelcome to Amazing Restaurant";
+    cout << "\n-----------------------------\n";
+
+    while (isOrderingMenu == "Y" || isOrderingMenu == "y") {
+
+        ordersList.push_back(orderingMenu("food", foods, isOrderingFood, stillOrderingFood));
+        ordersList.push_back(orderingMenu("drink", drinks, isOrderingDrink, stillOrderingDrink));
+
+        cout << "\nDo you want to order more?\n";
+        cin >> isOrderingMenu;
+    }
+
+    for (int i = 0; i < ordersList.size() - 1; i++) {
+        vector<vector<Order*>>::iterator itr = ordersList.begin() + i;
+        if (ordersList.at(i).empty()) {
+            ordersList.erase(itr);
+        }
+    }
+
+    if (!ordersList.at(0).empty()) {
+        cout << "\nYou order:\n";
+        cout << "No. \tMenu \t\tAmount \n";
+
+        double total = 0;
+        int counter = 0;
+        for (int j = 0; j < ordersList.size(); j++) {
+            for (int i = 0; i < ordersList.at(j).size(); i++) {
+                counter++;
+                cout << counter << "\t" << ordersList.at(j).at(i)->getMenu()->getName() << "\t\tRp.";
+                cout << ordersList.at(j).at(i)->getQuantity() * ordersList.at(j).at(i)->getMenu()->getPrice();
+                cout << "\n";
+
+                total += ordersList.at(j).at(i)->getQuantity() * ordersList.at(j).at(i)->getMenu()->getPrice();
+            }
+        }
+
+        cout << "Your total Meal is Rp." << total;
+        cout << "\nThank you, please enjoy your meal and come again!\n\n";
+    } else {
+        cout << "\nThank you for coming!\n\n";
+    }
+
+    return 0;
+}
