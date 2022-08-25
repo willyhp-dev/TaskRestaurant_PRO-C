@@ -2,7 +2,6 @@ CREATE VIEW log_foodrinks AS
 SELECT  id,nama, price, stock, kategori, id_log, method, info 
 FROM FOODRINKS, TX_LOG;
 
-
 CREATE OR REPLACE TRIGGER foodrink_log
 INSTEAD OF INSERT ON log_foodrinks
 FOR EACH ROW
@@ -20,7 +19,7 @@ FOR EACH ROW
 ENABLE
     
 BEGIN 
-    UPDATE foodrinks set stock = :new.stock  WHERE id = :old.id;  
+    UPDATE foodrinks set stock = :new.stock  WHERE id = :old.id;
    
 END;
 
@@ -41,7 +40,6 @@ BEGIN
         FOODSTOCK := FOODSTOCK+5;
         UPDATE log_foodrinks SET stock = FOODSTOCK WHERE  id = FOODID;
         INSERT INTO log_foodrinks(id_log,method,info)VALUES(FOODID,'UPDATE','Quantity Kurang Dari 5') ;
-        DBMS_OUTPUT.PUT_LINE(FOODSTOCK);
       
         END IF;
         EXIT WHEN cur_foodrink%NOTFOUND;
@@ -50,6 +48,13 @@ BEGIN
 
 END;
 /
+select * from foodrinks;
+
+UPDATE foodrinks set stock = 4 where id =2;
+
+DROP TRIGGER foodrink_audit;
+
+
 
 
 

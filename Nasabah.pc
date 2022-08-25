@@ -1,0 +1,865 @@
+exec sql begin declare section;
+
+char connData[50] = "C##WILLYHP/pontianak1@//localhost:1522/xe";
+int nChoice;
+int nlogin;
+int countId;
+int countsaving;
+int MenuBeranda;
+int backBeranda;
+int storechoice;
+int minuschoice;
+
+struct{
+	char historyid[30];
+	int actor;
+	char action[50];
+	char time[30];
+	char info[30];
+	int countHistory;
+}history;
+
+
+struct{
+	char username[20];
+	char password[20];
+	int  userid;
+	char confirmPassword[20];
+	int saldo;
+	int store;
+	int minus;
+	int status;
+}account;
+
+struct{
+	int userids;
+	int saldo;
+	int money;
+	int countTransfer;
+	char username[20];
+}transfer;
+
+
+exec sql end declare section;
+
+
+exec sql include sqlca;
+
+#include<stdio.h>
+#include<conio.h>
+#include<stdlib.h>
+
+
+#include <iostream>
+#include <map>
+#include <vector>
+#include <cstdio>
+#include <functional>
+#include <ctime>
+#include<string>
+
+using namespace std;
+
+void Checkconn(){
+	exec sql connect:connData;
+}
+
+void Register(){
+	backInput:
+	cout << "==========================="<<endl;
+	cout << " Register Form "<< endl;
+	cout << "==========================="<<endl;
+	cout << "Input Username : ";
+	cin >> account.username;
+	
+
+	cout << "Input Password : ";
+	//cin >> account.password;
+	string passwords;
+	char chpassword;
+	chpassword = _getch();
+	 while (chpassword != 13)
+    { 
+        passwords.push_back(chpassword);
+        cout << '*';
+        chpassword = _getch();
+   }
+   cout << endl;
+   strcpy(account.password, passwords.c_str());
+	cout << "Confirm Password : ";
+	//cin >> account.confirmPassword;
+	string cpasswords;
+	char chcpassword;
+	chcpassword = _getch();
+	 while (chcpassword != 13)
+    { 
+        cpasswords.push_back(chcpassword);
+        cout << '*';
+        chcpassword = _getch();
+   }
+   cout << endl;
+   strcpy(account.confirmPassword, cpasswords.c_str());
+
+	if(strlen(account.username) < 6 ){
+	system("cls");
+		cout<< "Username Length min 6 character"<<endl;
+		goto backInput;
+	}
+	else if(strlen(account.password) < 6){
+		cout << "Password Length min 6 character"<< endl;
+		goto backInput;
+	}
+
+	time_t now = time(0);
+
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+	int Month = 1 + ltm->tm_mon;
+	int day =   ltm->tm_mday;
+	int hour =  ltm->tm_hour;
+	int min  =  ltm->tm_min;
+	int sec  =  ltm->tm_sec;
+
+	EXEC SQL DECLARE sameUser CURSOR FOR 
+	SELECT count(id) from ms_users WHERE identitas_user = :account.username;
+	EXEC SQL OPEN sameUser;
+	EXEC SQL FETCH sameUser INTO :countId;
+
+	if(countId == 1){
+		system("cls");
+		cout << "Username Already used"<<endl<< endl;
+		goto backInput;
+	}
+	EXEC SQL CLOSE sameUser;
+
+	if(strcmp(account.password,account.confirmPassword) == 0){
+
+		EXEC SQL DECLARE CountNumber CURSOR FOR 
+		SELECT COUNT(id) from ms_users;
+
+		EXEC SQL OPEN CountNumber;
+		EXEC SQL fetch CountNumber into :countId;
+		countId = countId+1;
+		EXEC SQL INSERT INTO ms_users(id,identitas_user,password,status)
+		values(:countId, :account.username, :account.password, 'aktif');
+		EXEC SQL COMMIT;
+		EXEC SQL CLOSE CountNumber;
+
+		EXEC SQL DECLARE countSaving CURSOR FOR
+			SELECT COUNT(id) from ms_savings;
+		EXEC SQL OPEN countSaving;
+		EXEC SQL FETCH countSaving into countsaving;
+		countsaving = countsaving+1;
+		cout << countsaving+1<<endl;
+		EXEC SQL INSERT INTO ms_savings(id,user_id,saving)values(:countsaving, :countId,20000);
+		EXEC SQL COMMIT;
+		EXEC SQL CLOSE countSaving;
+		system("cls");
+		cout << "!!"<<"Register Successfully"<<"!!" <<endl<<endl;
+
+		EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history ;
+		history.countHistory = history.countHistory+1;
+		string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+		string actions = "Register Account User id "+to_string(countId);
+		string times = to_string(year)+ "-"+ to_string(Month) +"-"
+		+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+		strcpy(history.time, times.c_str());
+		strcpy(history.historyid,idhistory.c_str());
+		strcpy(history.action, actions.c_str());
+	
+		cout << history.time<<endl;
+		EXEC SQL INSERT INTO tx_history values(:history.historyid,0,
+		:history.action,:history.time,'success');
+		EXEC SQL COMMIT;
+
+	}
+	else{
+	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+	history.countHistory = history.countHistory+1;
+		EXEC SQL DECLARE CountNumbers CURSOR FOR 
+		SELECT COUNT(id) from ms_users;
+
+		EXEC SQL OPEN CountNumbers;
+		EXEC SQL fetch CountNumbers into :countId;
+		countId = countId+1;
+		
+		
+		string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+		string actions = "Register Account user id "+to_string(countId);
+		string times = to_string(year)+ "-"+ to_string(Month) +"-"
+		+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+		strcpy(history.time, times.c_str());
+		strcpy(history.historyid,idhistory.c_str());
+		strcpy(history.action, actions.c_str());
+	
+		
+		EXEC SQL INSERT INTO tx_history values(:history.historyid,0,
+		:history.action,:history.time,'failed');
+		EXEC SQL COMMIT;
+		EXEC SQL CLOSE CountNumbers;
+		cout << "password Tidak sama dengan Confirm Password Mohon input ulang lagi"<< endl<<endl;
+		goto backInput;
+	}
+
+	
+}
+
+void Login(){
+	backlogin:
+	cout << "=========================="<<endl;
+	cout << "Login Form"<<endl;
+	cout << "=========================="<<endl;
+	cout << "Input Username : ";
+	cin >> account.username;
+	
+	cout<< "Input Password : ";
+	//cin >> account.password;
+	string passwordz;
+	char chzpassword;
+	chzpassword = _getch();
+	 while (chzpassword != 13)
+    { 
+        passwordz.push_back(chzpassword);
+        cout << '*';
+        chzpassword = _getch();
+   }
+   cout << endl;
+   strcpy(account.password, passwordz.c_str());
+
+	time_t now = time(0);
+
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+	int Month = 1 + ltm->tm_mon;
+	int day =   ltm->tm_mday;
+	int hour =  ltm->tm_hour;
+	int min  =  ltm->tm_min;
+	int sec  =  ltm->tm_sec;
+
+	EXEC SQL DECLARE countlogin CURSOR FOR
+		select count(id) from ms_users where
+		identitas_user = :account.username and password = :account.password and status = 'aktif' ;
+	EXEC SQL OPEN countlogin;
+	EXEC SQL FETCH countlogin into :nlogin;
+	EXEC SQL CLOSE countlogin;
+
+	if(nlogin == 1){
+		
+		EXEC SQL DECLARE accountUser CURSOR FOR
+			SELECT id from ms_users WHERE 
+			identitas_user = :account.username and password = :account.password and status = 'aktif';
+	
+		EXEC SQL OPEN accountUser;
+		EXEC SQL FETCH accountUser INTO :account.userid;
+		EXEC SQL CLOSE accountUser;
+
+		EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+		history.countHistory = history.countHistory+1;
+
+		string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+		string actions = "Login Account User id "+to_string(account.userid);
+		string times = to_string(year)+ "-"+ to_string(Month) +"-"
+		+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+		strcpy(history.time, times.c_str());
+		strcpy(history.historyid,idhistory.c_str());
+		strcpy(history.action, actions.c_str());
+	
+		EXEC SQL INSERT INTO tx_history values(:history.historyid,0,
+		:history.action,:history.time,'success');
+		EXEC SQL COMMIT;
+	}
+
+	else if(nlogin == 0){
+	system("cls");
+	EXEC SQL DECLARE usercountid CURSOR FOR
+		SELECT id from ms_users WHERE identitas_user = :account.username;
+	EXEC SQL OPEN usercountid;
+	EXEC SQL FETCH usercountid INTO :account.userid;
+	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+	history.countHistory = history.countHistory+1;
+	string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+		string actions = "Login Account User " + to_string(account.userid);
+		string times = to_string(year)+ "-"+ to_string(Month) +"-"
+		+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+		strcpy(history.time, times.c_str());
+		strcpy(history.historyid,idhistory.c_str());
+		strcpy(history.action, actions.c_str());
+	
+		EXEC SQL INSERT INTO tx_history values(:history.historyid,0,
+		:history.action,:history.time,'failed');
+		EXEC SQL COMMIT;
+	cout << " !! " <<" username or password invalid "<< " !! "<<endl<< endl;
+	goto backlogin;
+
+	EXEC SQL CLOSE usercountid;
+	}
+
+}
+
+void Beranda(){
+	system("cls");
+
+	EXEC SQL DECLARE saldoHistory  CURSOR FOR
+	SELECT saving from ms_savings where user_id = :account.userid;
+
+	EXEC SQL OPEN saldoHistory;
+	EXEC SQL FETCH saldoHistory INTO :account.saldo;
+	if(account.saldo < 20000){
+		time_t now = time(0);
+
+		tm *ltm = localtime(&now);
+		int year = 1900 + ltm->tm_year;
+		int Month = 1 + ltm->tm_mon;
+		int day =   ltm->tm_mday;
+		int hour =  ltm->tm_hour;
+		int min  =  ltm->tm_min;
+		int sec  =  ltm->tm_sec;
+		EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+		history.countHistory = history.countHistory+1;
+		string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+		string actions = "Your saldo  "+to_string(account.saldo) +" You Need Deposite Money !!!";
+		string times = to_string(year)+ "-"+ to_string(Month) +"-"
+		+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+		strcpy(history.time, times.c_str());
+		strcpy(history.historyid,idhistory.c_str());
+		strcpy(history.action, actions.c_str());
+		
+		EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,
+		:history.action,:history.time,'success');
+		EXEC SQL COMMIT;
+
+		cout << history.action<< endl<<endl;
+	}
+	EXEC SQL CLOSE saldoHistory;
+
+	MenuBeranda = 0;
+	cout << "==========================="<<endl;
+	cout << "WELCOME TO " << account.username << endl;
+	cout << "==========================="<<endl;
+	cout << "Choice Menu Beranda : "<< endl;
+	cout << "1. Check savings"<<endl;
+	cout << "2. Withdraw money"<<endl;
+	cout << "3. Deposit money"<< endl;
+	cout << "4. Transfer money to another account"<< endl;
+	cout << "5. Freeze my account"<< endl;
+	cout << "6. Check History"<< endl;
+	cout << "9. LogOut Account"<<endl<<endl;
+
+	cout << "Choice Menu Number : ";
+	scanf_s("%d",&MenuBeranda);
+	
+}
+
+void checkSaving(){
+	system("cls");
+	
+	cout<< "==========================="<<endl;
+	cout<< "CHECK SAVING" << endl;
+	cout << "==========================="<<endl;
+
+	time_t now = time(0);
+
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+	int Month = 1 + ltm->tm_mon;
+	int day =   ltm->tm_mday;
+	int hour =  ltm->tm_hour;
+	int min  =  ltm->tm_min;
+	int sec  =  ltm->tm_sec;
+	
+	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+	history.countHistory = history.countHistory+1;
+
+	string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+	
+	string times = to_string(year)+ "-"+ to_string(Month) +"-"
+	+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+	strcpy(history.time, times.c_str());
+	strcpy(history.historyid,idhistory.c_str());
+	EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,
+	'CheckSaldo',:history.time,'success');
+	EXEC SQL COMMIT;
+
+	EXEC SQL DECLARE accountSaving CURSOR FOR
+		SELECT saving from ms_savings WHERE user_id = :account.userid;
+
+	EXEC SQL OPEN accountSaving;
+	EXEC SQL FETCH accountSaving INTO :account.saldo;
+	cout << "Saldo Anda : " << "Rp. "<< account.saldo << endl << endl;
+	EXEC SQL CLOSE accountSaving;
+	
+	cout << "Input 9 if you want back to Beranda : ";
+	cin >> backBeranda;
+
+}
+void withdrawMoney(){
+	system("cls");
+	backwithdraw:
+	cout<< "==========================="<<endl;
+	cout<< "Withdraw Money" << endl;
+	cout << "==========================="<<endl;
+
+	time_t now = time(0);
+
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+	int Month = 1 + ltm->tm_mon;
+	int day = ltm->tm_mday;
+	int hour = ltm->tm_hour;
+	int min =  ltm->tm_min;
+	int sec = ltm->tm_sec;
+
+	cout << "Withdraw Money : "<<endl;
+	cout << "1. Rp.50.000"<<endl;
+	cout << "2. Rp.100.000"<<endl;
+	cout << "3. Rp.150.000"<<endl;
+	cout << "4. Rp.200.000"<<endl;
+	cout << "Choice Withdraw Money : ";
+	cin >> minuschoice;
+
+	if(minuschoice == 1){
+		account.minus = account.minus + 50000;
+	}
+
+	else if(minuschoice == 2){
+		account.minus = account.minus + 100000;
+	}
+
+	else if(minuschoice == 3){
+		account.minus = account.minus + 150000;
+	}
+
+	else if(minuschoice == 4){
+		account.minus = account.minus + 200000;
+	}
+	else{
+		system("cls");
+		cout << "Tidak tertulis no Menu Deposite"<<endl<<endl;
+		goto backwithdraw;
+	}
+
+	EXEC SQL DECLARE WithdrawMoney CURSOR FOR
+		SELECT saving from ms_savings WHERE user_id = :account.userid;
+
+	EXEC SQL OPEN WithdrawMoney;
+	EXEC SQL FETCH WithdrawMoney INTO :account.saldo;
+	account.saldo = account.saldo - account.minus;
+	if(account.saldo < 0){
+	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+	history.countHistory = history.countHistory+1;
+
+	string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+	string actions = "Withdraw Money Rp."+to_string(account.minus)+" with id "+ to_string(account.userid);
+	string times = to_string(year)+ "-"+ to_string(Month) +"-"
+	+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+	strcpy(history.time, times.c_str());
+	strcpy(history.historyid,idhistory.c_str());
+	strcpy(history.action, actions.c_str());
+	
+	EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,:history.action,:history.time,'failed');
+	EXEC SQL COMMIT;
+
+		cout << "Your Saldo Not Enough"<< endl;
+	}
+	else{
+	EXEC SQL UPDATE ms_savings set saving = :account.saldo WHERE user_id = :account.userid;
+	EXEC SQL COMMIT;
+
+	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+	history.countHistory = history.countHistory+1;
+
+	string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+	string actions = "Withdraw Money Rp."+to_string(account.minus)+" with id "+ to_string(account.userid);
+	string times = to_string(year)+ "-"+ to_string(Month) +"-"
+	+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+	strcpy(history.time, times.c_str());
+	strcpy(history.historyid,idhistory.c_str());
+	strcpy(history.action, actions.c_str());
+	
+	EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,:history.action,:history.time,'success');
+	EXEC SQL COMMIT;
+	}
+	
+	EXEC SQL CLOSE WithdrawMoney;
+
+	
+	cout << "Input 9 if you want back to Beranda : ";
+	cin >> backBeranda;
+}
+void depositMoney(){
+	system("cls");
+	backdeposit:
+	cout<< "==========================="<<endl;
+	cout<< "Deposit Money" << endl;
+	cout << "==========================="<<endl;
+
+	time_t now = time(0);
+
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+	int Month = 1 + ltm->tm_mon;
+	int day = ltm->tm_mday;
+	int hour = ltm->tm_hour;
+	int min = ltm->tm_min;
+	int sec = ltm->tm_sec;
+
+	cout << "Store Money : " <<endl;
+	cout << "1. Rp 50.000 "<<endl;
+	cout << "2. Rp 100.000 "<<endl;
+	cout << "3. Rp 150.000 "<<endl;
+	cout << "4. Rp 200.000 "<<endl;
+	cout << "Choice Store Money : ";
+	cin >> storechoice;
+
+	if(storechoice == 1){
+		account.store = account.store + 50000;
+	}
+	else if (storechoice == 2){
+		account.store = account.store + 100000;
+	}
+	else if (storechoice == 3){
+		account.store = account.store + 150000;
+	}
+	else if (storechoice == 4){
+		account.store = account.store + 200000;
+	}
+	else {
+	system("cls");
+		cout << "Tidak tertulis no Menu Deposite"<<endl<<endl;
+		goto backdeposit;
+	}
+
+	EXEC SQL DECLARE StoreMoney CURSOR FOR
+		SELECT saving from ms_savings WHERE user_id = :account.userid;
+	EXEC SQL OPEN StoreMoney;
+	EXEC SQL FETCH StoreMoney INTO :account.saldo;
+	string actions = "Deposite Money Rp."+to_string(account.store)+" with id "+ to_string(account.userid);
+	account.store = account.store + account.saldo;
+	
+	EXEC SQL UPDATE ms_savings set saving = :account.store WHERE user_id = :account.userid;
+	EXEC SQL COMMIT;
+
+	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+	history.countHistory = history.countHistory+1;
+	string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+	
+	string times = to_string(year)+ "-"+ to_string(Month) +"-"
+	+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+	strcpy(history.time, times.c_str());
+	strcpy(history.historyid,idhistory.c_str());
+	strcpy(history.action, actions.c_str());
+	
+	EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,:history.action,:history.time,'success');
+	EXEC SQL COMMIT;
+	EXEC SQL CLOSE StoreMoney;
+
+
+	cout << "Input 9 if you want back to Beranda : ";
+	cin >> backBeranda;
+}
+void Transfer(){
+	system("cls");
+	cout<< "==========================="<<endl;
+	cout<< "Transfer" << endl;
+	cout << "==========================="<<endl;
+
+	time_t now = time(0);
+
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+	int Month = 1 + ltm->tm_mon;
+	int day = ltm->tm_mday;
+	int hour = ltm->tm_hour;
+	int min =  ltm->tm_min;
+	int sec = ltm->tm_sec;
+
+	transfermenu:
+	cout << "USER ID : ";
+	cin >> transfer.userids;
+	
+	if(transfer.userids == account.userid){
+		system("cls");
+		cout << "cant be transfer with same account"<<endl<<endl;
+		goto transfermenu;
+	}
+
+	EXEC SQL SELECT count(id) into :transfer.countTransfer 
+	from ms_users WHERE id = :transfer.userids and status = 'aktif';
+
+
+	if(transfer.countTransfer == 1){
+		
+		EXEC SQL DECLARE IdentityUser CURSOR FOR
+			SELECT identitas_user from ms_users WHERE id = :transfer.userids;
+		EXEC SQL OPEN IdentityUser;
+		EXEC SQL FETCH IdentityUser INTO :transfer.username;
+		EXEC SQL CLOSE IdentityUser;
+
+		EXEC SQL DECLARE saldoUser CURSOR FOR
+		SELECT saving from ms_savings WHERE user_id = :transfer.userids;
+		EXEC SQL OPEN saldoUser;
+		EXEC SQL FETCH saldoUser INTO :transfer.saldo; 
+		EXEC SQL CLOSE saldoUser;
+
+		cout << "Username : "<< transfer.username << endl;
+		
+		
+		cout << "Transfer money : ";
+		cin >> transfer.money;
+
+		EXEC SQL DECLARE AccountSaldo CURSOR FOR 
+		SELECT saving  from ms_savings where user_id = :account.userid;
+		EXEC SQL OPEN AccountSaldo;
+		EXEC SQL FETCH AccountSaldo INTO :account.saldo;
+			account.saldo = account.saldo - transfer.money;
+			transfer.saldo = transfer.saldo + transfer.money;
+
+			if(account.saldo < 0){
+			EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+			history.countHistory = history.countHistory+1;
+			string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+			string actions = "Transfer Money Rp."+to_string(transfer.money)+" to id "+ to_string(transfer.userids);
+			string times = to_string(year)+ "-"+ to_string(Month) +"-"
+			+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+			strcpy(history.time, times.c_str());
+			strcpy(history.historyid,idhistory.c_str());
+			strcpy(history.action, actions.c_str());
+
+			EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,:history.action,:history.time,'failed');
+			EXEC SQL COMMIT;
+			
+				cout << "Your saldo not enough"<< endl;
+			}
+			else{
+			EXEC SQL UPDATE ms_savings set saving = :account.saldo Where user_id = :account.userid;
+			EXEC SQL COMMIT;
+			EXEC SQL UPDATE ms_savings set saving = :transfer.saldo where user_id = :transfer.userids;
+			EXEC SQL COMMIT;
+			EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+			history.countHistory = history.countHistory+1;
+			string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+			string actions = "Transfer Money Rp."+to_string(transfer.money)+" to id "+ to_string(transfer.userids);
+			string times = to_string(year)+ "-"+ to_string(Month) +"-"
+			+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+			strcpy(history.time, times.c_str());
+			strcpy(history.historyid,idhistory.c_str());
+			strcpy(history.action, actions.c_str());
+
+			EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,:history.action,:history.time,'success');
+			EXEC SQL COMMIT;
+
+			cout << "Success Transfer"<<endl <<endl;
+			}
+
+			
+		}
+
+		EXEC SQL CLOSE AccountSaldo;
+		cout << "Input 9 if you want back to Beranda : ";
+		cin >> backBeranda;
+
+	}
+
+void FreezeAccount(){
+	system("cls");
+	cout<< "==========================="<<endl;
+	cout<< "FreezeAccount" << endl;
+	cout << "==========================="<<endl;
+
+	time_t now = time(0);
+
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+	int Month = 1 + ltm->tm_mon;
+	int day = ltm->tm_mday;
+	int hour = ltm->tm_hour;
+	int min =  ltm->tm_min;
+	int sec =  ltm->tm_sec;
+	
+	cout << "Menu Status : "<<endl;
+	cout << "1. Aktif"<<endl;
+	cout << "2. Non Aktif" << endl<<endl;
+
+	cout <<"Choice Status : ";
+	cin >> account.status;
+
+	if(account.status == 1){
+		
+		EXEC SQL UPDATE ms_users set status = 'aktif' WHERE id = :account.userid;
+		EXEC SQL COMMIT;
+		EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+		history.countHistory = history.countHistory+1;
+		string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+		string actions = "Freeze Account Aktif id "+ to_string(account.userid);
+		string times = to_string(year)+ "-"+ to_string(Month) +"-"
+		+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+		strcpy(history.time, times.c_str());
+		strcpy(history.historyid,idhistory.c_str());
+		strcpy(history.action, actions.c_str());
+
+			EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,:history.action,:history.time,'success');
+			EXEC SQL COMMIT;
+
+		cout << "Success Update Status"<<endl<<endl;
+	}
+	else if (account.status = 2){
+		EXEC SQL UPDATE ms_users set status = 'NonAktif' WHERE id = :account.userid;
+		EXEC SQL COMMIT;
+		EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+		history.countHistory = history.countHistory+1;
+		string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+		string actions = "Freeze Account Non Aktif id "+ to_string(account.userid);
+		string times = to_string(year)+ "-"+ to_string(Month) +"-"
+		+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+		strcpy(history.time, times.c_str());
+		strcpy(history.historyid,idhistory.c_str());
+		strcpy(history.action, actions.c_str());
+
+			EXEC SQL INSERT INTO tx_history values(:history.historyid,:account.userid,:history.action,:history.time,'success');
+			EXEC SQL COMMIT;
+		cout << "Success Update Status"<<endl<<endl;
+	}
+
+
+	cout << "Input 9 if you want back to Beranda : ";
+	cin >> backBeranda;
+}
+void Checkhistory(){
+	system("cls");
+	cout<< "==========================="<<endl;
+	cout<< "History" << endl;
+	cout << "==========================="<<endl;
+
+	time_t now = time(0);
+
+    //tm *ltm = localtime(&now);
+    //int year = 1900 + ltm->tm_year;
+	//int Month = 1 + ltm->tm_mon;
+	//int day = ltm->tm_mday;
+	//char moments[30];
+	//string moment = "tr_"+to_string(year) + to_string(Month)+ to_string(day);
+
+	EXEC SQL DECLARE loophistory CURSOR FOR 
+		SELECT count(id) from tx_history WHERE actor = :account.userid;
+	EXEC SQL OPEN loophistory;
+	EXEC SQL FETCH loophistory INTO :history.countHistory;
+	EXEC SQL CLOSE loophistory;
+
+	EXEC SQL DECLARE HistoryShow CURSOR FOR 
+	SELECT id,action, time, info from tx_history Where actor = :account.userid;
+	EXEC SQL OPEN HistoryShow;
+	cout << "ID HISTORY" <<"\t\t\t"<< "ACTION"<<"\t\t\t\t\t\t\t" << "TIME"<<"\t\t\t\t\t"<<"INFO"<<endl;
+	cout << "===================================================================================================================================================="<< endl;
+	for(int i = 0; i<history.countHistory;i++){
+	EXEC SQL FETCH HistoryShow INTO
+	:history.historyid,:history.action,:history.time, :history.info;
+	cout << history.historyid << "\t" << history.action << "\t"<< history.time <<"\t" << history.info << endl;
+
+	}
+	
+	EXEC SQL CLOSE HistoryShow;
+
+	cout << "Input 9 if you want back to Beranda : ";
+	cin >> backBeranda;
+
+}
+
+int main(){
+	Checkconn();
+	if(sqlca.sqlcode == 0){
+	menuAccount:	
+	cout<<"====================================="<<endl;
+	cout<<" Welcome To NDS BANK "<<endl;;
+	cout<<"=====================================\n"<<endl;
+	cout<<" Please Choose Register or Login\n "<<endl;
+	cout<<" Enter 1 for Register a new account or 2  for Login an account"<<endl;
+	cout << " Input 9 if you want Exit Program " << endl;
+	cout<<" Choice Number : ";
+	cin >> nChoice;
+
+	if(nChoice == 1){
+		system("cls");
+		Register();
+		goto menuAccount;
+	}
+	else if(nChoice == 2){
+		system("cls");
+		Login();		
+	}
+
+	else if(nChoice == 9){
+		system("cls");
+		return 0;		
+	}
+	else{
+		system("cls");
+		goto menuAccount;
+	}
+	
+	if(nlogin == 1){
+		Beranda();
+	}
+
+	Berandas:
+	if(MenuBeranda == 1){
+		checkSaving();
+		
+	}
+
+	else if(MenuBeranda == 2){
+		withdrawMoney();
+		
+	}
+	else if(MenuBeranda == 3){
+		depositMoney();
+	
+	}
+	else if(MenuBeranda == 4){
+		Transfer();
+	
+	}
+	else if(MenuBeranda == 5){
+		FreezeAccount();
+		
+	}
+	else if(MenuBeranda == 6){
+		Checkhistory();
+		
+	}
+	else if(MenuBeranda == 9){
+	system("cls");
+
+	time_t now = time(0);
+
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+	int Month = 1 + ltm->tm_mon;
+	int day = ltm->tm_mday;
+	int hour = ltm->tm_hour;
+	int min =  ltm->tm_min;
+	int sec =  ltm->tm_sec;
+	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
+		history.countHistory = history.countHistory+1;
+	string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
+		string actions = "logout User id "+to_string(account.userid);
+		string times = to_string(year)+ "-"+ to_string(Month) +"-"
+		+ to_string(day) + " " + to_string(hour)+":"+ to_string(min)+":"+to_string(sec);
+		strcpy(history.time, times.c_str());
+		strcpy(history.historyid,idhistory.c_str());
+		strcpy(history.action, actions.c_str());
+
+			EXEC SQL INSERT INTO tx_history values(:history.historyid,0,:history.action,:history.time,'success');
+			EXEC SQL COMMIT;
+	
+
+	goto menuAccount;
+	}
+	if(backBeranda == 9){
+		Beranda();
+	}
+	goto Berandas;
+}
+
+	return 0;
+
+}
