@@ -464,6 +464,7 @@ void withdrawMoney(){
 	else{
 	EXEC SQL UPDATE ms_savings set saving = :account.saldo WHERE user_id = :account.userid;
 	EXEC SQL COMMIT;
+	cout << "Success Withdraw"<<endl <<endl;
 
 	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
 	history.countHistory = history.countHistory+1;
@@ -539,6 +540,8 @@ void depositMoney(){
 	EXEC SQL UPDATE ms_savings set saving = :account.store WHERE user_id = :account.userid;
 	EXEC SQL COMMIT;
 
+	cout << "Success Deposite"<<endl <<endl;
+
 	EXEC SQL SELECT count(id) INTO :history.countHistory from tx_history;
 	history.countHistory = history.countHistory+1;
 	string idhistory = "tr_"+to_string(year) + to_string(Month)+ to_string(day)+"000" + to_string(history.countHistory);
@@ -559,6 +562,7 @@ void depositMoney(){
 }
 void Transfer(){
 	system("cls");
+	transfermenu:
 	cout<< "==========================="<<endl;
 	cout<< "Transfer" << endl;
 	cout << "==========================="<<endl;
@@ -573,7 +577,7 @@ void Transfer(){
 	int min =  ltm->tm_min;
 	int sec = ltm->tm_sec;
 
-	transfermenu:
+	
 	cout << "USER ID : ";
 	cin >> transfer.userids;
 	
@@ -651,8 +655,13 @@ void Transfer(){
 			cout << "Success Transfer"<<endl <<endl;
 			}
 
-			
 		}
+		else{
+				system("cls");
+				cout << "accout user is non aktif"<<endl<<endl;
+				goto transfermenu;
+
+			}
 
 		EXEC SQL CLOSE AccountSaldo;
 		cout << "Input 9 if you want back to Beranda : ";
